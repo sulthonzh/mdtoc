@@ -1,0 +1,15 @@
+{
+  "name": "mdtoc",
+  "version": "1.0.0",
+  "description": "Generate table of contents from markdown files. Zero dependencies.",
+  "main": "index.js",
+  "bin": {
+    "mdtoc": "./index.js"
+  },
+  "scripts": {
+    "test": "node test.js"
+  },
+  "keywords": ["markdown", "toc", "table-of-contents", "headings", "links", "cli"],
+  "license": "MIT",
+  "author": "sulthonzh"
+}
