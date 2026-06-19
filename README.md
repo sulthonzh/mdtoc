@@ -1,6 +1,6 @@
 # mdtoc
 
-Generate a table of contents from markdown files. Zero dependencies.
+Generate a table of contents from markdown files — zero dependencies, one file, every heading.
 
 ## Why
 
@@ -18,6 +18,66 @@ Or just use it directly:
 
 ```bash
 npx mdtoc README.md
+```
+
+## Quick Start
+
+```bash
+$ mdtoc README.md
+- [Installation](#installation)
+- [Usage](#usage)
+  - [Basic](#basic)
+  - [Advanced](#advanced)
+- [Contributing](#contributing)
+```
+
+## Real-World Examples
+
+### 1. Pre-commit TOC check (CI gate)
+
+Keep your README TOC in sync without manual effort:
+
+```bash
+# In a pre-commit hook or CI step:
+mdtoc -i README.md
+git diff --exit-code README.md || (echo "TOC is stale — run 'mdtoc -i README.md'" && exit 1)
+```
+
+This inserts (or updates) the TOC between markers, then fails if anything changed — catching stale TOCs before they ship.
+
+### 2. Multi-file documentation site
+
+Generate TOCs for every doc in your `docs/` folder in one command:
+
+```bash
+$ mdtoc -i docs/getting-started.md docs/api-reference.md docs/troubleshooting.md
+```
+
+Each file gets its TOC updated in place. Use `--max-depth 3` to keep TOCs compact for long docs:
+
+```bash
+$ mdtoc -i -m 3 docs/*.md
+```
+
+### 3. Programmatic TOC for a static site generator
+
+Use the API to build a sidebar navigation from your markdown content:
+
+```js
+const { parseHeadings, generateToc } = require('mdtoc');
+const fs = require('fs');
+
+const markdown = fs.readFileSync('guide.md', 'utf8');
+const headings = parseHeadings(markdown, { maxDepth: 3 });
+
+// Generate HTML sidebar from headings
+const sidebar = headings.map(h => {
+  const indent = '  '.repeat(h.level - 1);
+  const slug = h.text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+  return `${indent}<a href="#${slug}">${h.text}</a>`;
+}).join('\n');
+
+console.log(sidebar);
 ```
 
 ## Usage
@@ -73,6 +133,13 @@ $ mdtoc -b '*' --title '## Contents' README.md
 * [Setup](#setup)
 ```
 
+### Different slug conventions
+
+```bash
+$ mdtoc --slug gitlab README.md    # GitLab-style anchors
+$ mdtoc --slug bitbucket README.md # Bitbucket-style anchors
+```
+
 ## Options
 
 | Flag | Default | Description |
@@ -85,6 +152,8 @@ $ mdtoc -b '*' --title '## Contents' README.md
 | `--json` | off | Output headings as JSON |
 | `-i, --insert` | off | Insert/update TOC in file |
 | `--stdout` | off | With `-i`, print instead of writing |
+| `-V, --version` | — | Print version number |
+| `-h, --help` | — | Show help |
 
 ## API
 
@@ -105,20 +174,36 @@ const updated = insertToc(markdownContent, toc);
 ### Functions
 
 - **`parseHeadings(content, opts?)`** — Extract headings. Supports ATX (`#`) and setext (`===`/`---`). Skips code blocks. Returns `[{ level, text, line }]`.
-- **`slugify(text, convention?)`** — Convert heading text to anchor slug. Strips markdown formatting.
+- **`slugify(text, convention?)`** — Convert heading text to anchor slug. Strips markdown formatting (bold, italic, code, links, images, HTML). Supports `github`, `gitlab`, `bitbucket` conventions.
 - **`resolveSlugs(headings, convention?)`** — Add `slug` field with duplicate resolution (foo, foo-1, foo-2).
-- **`generateToc(headings, opts?)`** — Render TOC string with indentation.
-- **`insertToc(content, toc, opts?)`** — Insert/replace TOC between markers in a file.
+- **`generateToc(headings, opts?)`** — Render TOC string with indentation. Options: bullet, indent, slugConvention, title, maxDepth, minDepth.
+- **`insertToc(content, toc, opts?)`** — Insert/replace TOC between markers in a file. Correctly handles setext headings.
+
+## How It Compares
+
+| Feature | mdtoc | doctoc | markdown-toc | GitHub auto-TOC |
+|---------|-------|--------|--------------|-----------------|
+| Zero dependencies | ✅ | ❌ (12+ deps) | ❌ (15+ deps) | N/A |
+| Works offline | ✅ | ✅ | ✅ | ❌ |
+| Setext heading support | ✅ | ❌ | ❌ | ❌ |
+| Multiple slug conventions | ✅ (3) | ❌ | ❌ | GitHub only |
+| Programmatic API | ✅ | ❌ | ✅ | ❌ |
+| Code-block aware | ✅ | ✅ | ✅ | ✅ |
+| Stdin support | ✅ | ❌ | ❌ | ❌ |
+| In-place insertion | ✅ | ✅ | ❌ | ✅ |
+| Install size | ~8 KB | ~500 KB | ~200 KB | 0 |
 
 ## Features
 
-- ATX and setext heading support
-- Code block aware (doesn't parse `#` inside ```` ``` ````)
+- ATX (`#`) and setext (`===`/`---`) heading support
+- CommonMark-compliant setext underline detection (0–3 leading spaces)
+- Code block aware (doesn't parse `#` inside ` ``` ` or `~~~`)
 - Duplicate slug resolution (GitHub-compatible)
-- Three slug conventions
-- Stdin + file input
+- Three slug conventions: GitHub, GitLab, Bitbucket
+- Stdin + file input (supports multiple files)
 - In-place insertion with markers
-- Zero dependencies
+- Strip markdown formatting in slugs (bold, italic, code, links, images, HTML)
+- Zero dependencies, single file
 
 ## License
 

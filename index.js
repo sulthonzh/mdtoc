@@ -39,13 +39,14 @@ function parseHeadings(content, options = {}) {
     }
 
     // Setext headings (text followed by === for H1 or --- for H2)
+    // CommonMark: underline can have 0-3 leading spaces
     if (i + 1 < lines.length && line.trim() && !line.startsWith('#')) {
       const next = lines[i + 1];
-      if (/^(=+)\s*$/.test(next)) {
+      if (/^ {0,3}(=+)\s*$/.test(next)) {
         if (1 >= minDepth && 1 <= maxDepth) {
           headings.push({ level: 1, text: line.trim(), line: i + 1 });
         }
-      } else if (/^(-{2,})\s*$/.test(next)) {
+      } else if (/^ {0,3}(-{2,})\s*$/.test(next)) {
         // H2 setext — but not a horizontal rule like --- or - - -
         if (2 >= minDepth && 2 <= maxDepth) {
           headings.push({ level: 2, text: line.trim(), line: i + 1 });
@@ -185,7 +186,12 @@ function insertToc(content, toc, options = {}) {
     const lines = content.split('\n');
     const headings = parseHeadings(content);
     if (headings.length > 0) {
-      const insertAfter = headings[0].line; // 1-indexed
+      let insertAfter = headings[0].line; // 1-indexed (line of heading text)
+      // If setext heading (text + underline), insert AFTER the underline
+      const underline = lines[insertAfter]; // 0-indexed: line after heading text
+      if (underline && /^ {0,3}(=+|-{2,})\s*$/.test(underline)) {
+        insertAfter++;
+      }
       const before = lines.slice(0, insertAfter).join('\n');
       const after = lines.slice(insertAfter).join('\n');
       return `${before}\n\n${startMarker}\n\n${toc}\n\n${endMarker}\n\n${after}`;
@@ -212,6 +218,7 @@ Options:
       --json              Output headings as JSON
   -i, --insert            Insert TOC into file (between markers)
       --stdout            With -i, print to stdout instead of writing file
+  -V, --version           Show version number
   -h, --help              Show this help
 
 When no file is given, reads from stdin.
@@ -223,6 +230,11 @@ Examples:
   mdtoc -i README.md
   cat README.md | mdtoc
 `);
+}
+
+function showVersion() {
+  const pkg = JSON.parse(fs.readFileSync(require.resolve('./package.json'), 'utf8'));
+  console.log(pkg.version);
 }
 
 function parseArgs(argv) {
@@ -249,6 +261,7 @@ function parseArgs(argv) {
       case '--json': opts.jsonOutput = true; break;
       case '-i': case '--insert': opts.insertMode = true; break;
       case '--stdout': opts.writeToStdout = true; break;
+      case '-V': case '--version': showVersion(); process.exit(0);
       case '-h': case '--help': showHelp(); process.exit(0);
       default:
         if (!a.startsWith('-')) opts.files.push(a);

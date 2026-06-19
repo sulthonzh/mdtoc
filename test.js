@@ -1,6 +1,8 @@
 'use strict';
 
 const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
 const { parseHeadings, slugify, resolveSlugs, generateToc, insertToc } = require('./index');
 
 let passed = 0;
@@ -335,6 +337,125 @@ test('code block with heading-like content using tildes', () => {
   // So '# Not real' would be parsed as heading
   // This is acceptable behavior for CommonMark (fences need 3+ chars)
   assert(h.length >= 1);
+});
+
+// ── Setext edge cases ──────────────────────────────────────────────────
+
+test('setext underline with leading spaces (CommonMark 0-3)', () => {
+  const md = 'My Title\n   ===';
+  const h = parseHeadings(md);
+  eq(h.length, 1);
+  eq(h[0].level, 1);
+  eq(h[0].text, 'My Title');
+});
+
+test('setext H2 underline with leading spaces', () => {
+  const md = 'Section\n  ---';
+  const h = parseHeadings(md);
+  eq(h.length, 1);
+  eq(h[0].level, 2);
+});
+
+test('four spaces before setext underline is NOT a heading', () => {
+  const md = 'My Title\n    ===';
+  const h = parseHeadings(md);
+  eq(h.length, 0);
+});
+
+// ── insertToc with setext headings ─────────────────────────────────────
+
+test('insertToc does not split setext heading from underline', () => {
+  const content = 'Title Page\n==========\n\n## Section A\n## Section B';
+  const headings = parseHeadings(content);
+  const toc = generateToc(headings);
+  const result = insertToc(content, toc);
+  const lines = result.split('\n');
+  const titleIdx = lines.findIndex(l => l.includes('Title Page'));
+  assert(titleIdx >= 0, 'Title not found');
+  assert(lines[titleIdx + 1].startsWith('==='), 'Setext underline must stay on the line after heading text');
+  const markerIdx = lines.findIndex(l => l.includes('<!-- toc -->'));
+  assert(markerIdx > titleIdx + 1, 'TOC marker must be after the setext underline');
+});
+
+// ── slugify edge cases ─────────────────────────────────────────────────
+
+test('slugify handles image markdown', () => {
+  eq(slugify('![Alt Text](image.png)'), 'alt-text');
+});
+
+test('slugify handles nested bold+italic', () => {
+  eq(slugify('**_Bold Italic_**'), 'bold-italic');
+});
+
+test('slugify bitbucket convention', () => {
+  eq(slugify('Hello World!', 'bitbucket'), 'hello-world');
+});
+
+// ── generateToc edge cases ─────────────────────────────────────────────
+
+test('generateToc with title and empty headings returns just title', () => {
+  const toc = generateToc([], { title: '## Contents' });
+  eq(toc, '## Contents');
+});
+
+test('generateToc minDepth filters headings', () => {
+  const md = '# A\n## B\n### C';
+  const h = parseHeadings(md);
+  const toc = generateToc(h, { minDepth: 2 });
+  const lines = toc.split('\n');
+  eq(lines.length, 2);
+  assert(lines[0].includes('[B]'), 'First should be B');
+});
+
+// ── version + API stability ────────────────────────────────────────────
+
+test('package.json version is valid semver', () => {
+  const pkg = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, 'package.json'), 'utf8'));
+  assert(/^\d+\.\d+\.\d+$/.test(pkg.version), 'Invalid version: ' + pkg.version);
+});
+
+test('exported API is stable (5 functions)', () => {
+  assert(typeof parseHeadings === 'function');
+  assert(typeof slugify === 'function');
+  assert(typeof resolveSlugs === 'function');
+  assert(typeof generateToc === 'function');
+  assert(typeof insertToc === 'function');
+});
+
+// ── Complex documents ──────────────────────────────────────────────────
+
+test('complex document with mixed heading types', () => {
+  const md = [
+    '# Project Name',
+    '',
+    'Intro text here.',
+    '',
+    '## Installation',
+    '',
+    '```bash',
+    'npm install',
+    '# not a heading',
+    '```',
+    '',
+    '### From source',
+    '',
+    'Build Steps',
+    '------------',
+    '',
+    '## Usage',
+  ].join('\n');
+  const h = parseHeadings(md);
+  eq(h.length, 5);
+  eq(h[0].text, 'Project Name');
+  eq(h[3].text, 'Build Steps');
+  eq(h[3].level, 2);
+});
+
+test('heading with closing hashes variation', () => {
+  const md = '## My Section ##';
+  const h = parseHeadings(md);
+  eq(h.length, 1);
+  eq(h[0].text, 'My Section');
 });
 
 // ── Summary ──────────────────────────────────────────────────────────
