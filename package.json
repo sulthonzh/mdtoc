@@ -14,7 +14,30 @@
     "test": "node test.js",
     "prepublishOnly": "npm test"
   },
-  "keywords": ["markdown", "toc", "table-of-contents", "headings", "links", "cli"],
+  "keywords": [
+    "markdown",
+    "toc",
+    "table-of-contents",
+    "headings",
+    "links",
+    "cli"
+  ],
   "license": "MIT",
-  "author": "sulthonzh"
+  "author": "sulthonzh",
+  "files": [
+    "index.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=14"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sulthonzh/mdtoc.git"
+  },
+  "homepage": "https://github.com/sulthonzh/mdtoc",
+  "bugs": {
+    "url": "https://github.com/sulthonzh/mdtoc/issues"
+  }
 }
