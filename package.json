@@ -39,5 +39,8 @@
   "homepage": "https://github.com/sulthonzh/mdtoc",
   "bugs": {
     "url": "https://github.com/sulthonzh/mdtoc/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
